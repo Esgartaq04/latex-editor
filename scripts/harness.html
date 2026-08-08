@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TeXPane TeX Live discovery harness</title>
+  </head>
+  <body>
+    <p>Build-time harness. Drives the SwiftLaTeX worker so the server can record
+      which TeX Live files a document actually needs.</p>
+    <script>
+      // Minimal re-implementation of the engine's command protocol, enough to
+      // build a format and compile documents. The app has its own typed wrapper;
+      // duplicating it here keeps the build tool free of a bundler.
+      const log = [];
+      let worker = null;
+      let pending = null;
+
+      function spawn(workerUrl) {
+        return new Promise((resolve, reject) => {
+          // Discovery uses the raw engine so the server sees the native
+          // protocol, including kpathsea's format codes. Verification uses the
+          // real shimmed worker, against the real static store.
+          worker = new Worker(workerUrl);
+          const timer = setTimeout(() => reject(new Error("engine start timeout")), 120000);
+          worker.onmessage = (event) => {
+            if (event.data && event.data.cmd === undefined) {
+              clearTimeout(timer);
+              worker.onmessage = (e) => {
+                const p = pending;
+                pending = null;
+                if (p) p.resolve(e.data);
+              };
+              resolve();
+              return;
+            }
+          };
+          worker.onerror = (event) => {
+            clearTimeout(timer);
+            reject(new Error(event.message || "worker error"));
+          };
+        });
+      }
+
+      function send(message, timeoutMs) {
+        return new Promise((resolve, reject) => {
+          if (pending) return reject(new Error("busy"));
+          const timer = setTimeout(() => {
+            pending = null;
+            reject(new Error("command timeout: " + message.cmd));
+          }, timeoutMs || 300000);
+          pending = {
+            resolve: (data) => {
+              clearTimeout(timer);
+              resolve(data);
+            },
+          };
+          worker.postMessage(message);
+        });
+      }
+
+      window.texpane = {
+        log,
+        async start(endpoint, workerUrl) {
+          if (worker) {
+            worker.terminate();
+            worker = null;
+            pending = null;
+          }
+          await spawn(workerUrl || "/swiftlatex/swiftlatexpdftex.js");
+          // Assign-only commands send no reply, so they are posted, not awaited.
+          worker.postMessage({ cmd: "settexliveurl", url: endpoint });
+        },
+        /** Produce pdflatex.fmt with this exact engine build. */
+        async buildFormat() {
+          const result = await send({ cmd: "compileformat" }, 900000);
+          log.push("format: " + result.result + " status=" + result.status);
+          if (result.result !== "ok" || !result.pdf) {
+            return { ok: false, log: result.log || "" };
+          }
+          return { ok: true, bytes: Array.from(new Uint8Array(result.pdf)), log: result.log || "" };
+        },
+        async compile(source, passes) {
+          // Wipe the work directory first: a stale main.aux from the previous
+          // document is read back in and breaks the next one.
+          worker.postMessage({ cmd: "flushcache" });
+          await send({ cmd: "writefile", url: "main.tex", src: source });
+          worker.postMessage({ cmd: "setmainfile", url: "main.tex" });
+          let last = null;
+          for (let i = 0; i < (passes || 2); i++) {
+            last = await send({ cmd: "compilelatex" }, 600000);
+            if (last.result !== "ok") break;
+          }
+          return {
+            ok: last && last.result === "ok",
+            pages: last && last.pdf ? last.pdf.byteLength : 0,
+            log: (last && last.log) || "",
+          };
+        },
+      };
+    </script>
+  </body>
+</html>

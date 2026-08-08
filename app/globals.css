@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #0d1117;
+  --color-surface-raised: #161b22;
+  --color-surface-sunken: #010409;
+  --color-line: #30363d;
+  --color-ink: #e6edf3;
+  --color-ink-dim: #8b949e;
+  --color-accent: #2f81f7;
+}
+
+:root {
+  color-scheme: dark;
+  --surface: #0d1117;
+  --surface-raised: #161b22;
+  --surface-sunken: #010409;
+  --line: #30363d;
+  --ink: #e6edf3;
+  --ink-dim: #8b949e;
+  --accent: #2f81f7;
+  --danger: #f85149;
+  --warn: #d29922;
+  --paper-backdrop: #1b1f24;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-raised: #f6f8fa;
+  --surface-sunken: #eaeef2;
+  --line: #d0d7de;
+  --ink: #1f2328;
+  --ink-dim: #59636e;
+  --accent: #0969da;
+  --danger: #cf222e;
+  --warn: #9a6700;
+  --paper-backdrop: #c9d1d9;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  overscroll-behavior: none;
+}
+
+/* CodeMirror fills its pane and scrolls internally. */
+.cm-editor {
+  height: 100%;
+}
+
+.cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.pdf-page {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  background: #ffffff;
+  display: block;
+  margin: 0 auto 12px;
+  max-width: 100%;
+  height: auto;
+}

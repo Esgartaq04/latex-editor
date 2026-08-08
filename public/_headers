@@ -1,0 +1,22 @@
+# Cloudflare Pages / Netlify header rules.
+#
+# The TeX Live store and the engine are content-addressed by their build: a
+# changed file gets a new build, never a new body at the same URL. Caching them
+# forever is what makes a repeat visit cost nothing — for the visitor and for
+# the bandwidth bill.
+
+/swiftlatex/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/pdfjs/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The store is committed pre-compressed. Hosts do not compress these content
+# types on their own, and the format dump is 21 MB raw against 5.7 MB gzipped.
+/texlive/files/*
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Encoding: gzip
+
+# The manifest is the one file that changes when the store is rebuilt.
+/texlive/manifest.json
+  Cache-Control: public, max-age=3600, must-revalidate

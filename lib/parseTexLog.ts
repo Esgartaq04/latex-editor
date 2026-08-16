@@ -25,8 +25,14 @@ const LINE_MARKER = /^l\.(\d+)\s?(.*)$/;
 const INPUT_LINE = /on input line (\d+)/;
 /** `./main.tex:42: message` — file:line:message form. */
 const FILE_LINE = /^(?:\.\/)?[^\s:]+\.(?:tex|sty|cls|ltx):(\d+):\s*(.*)$/;
+/** ``LaTeX Error: File `charter.sty' not found.`` */
+const MISSING_FILE = /(?:LaTeX Error: )?File [`'"]([^`'"]+)['"] not found/;
 
-export function parseTexLog(log: string): TexError[] {
+/**
+ * @param source the document, used to point missing-file errors at the line
+ *   that asked for the package rather than wherever TeX happened to give up.
+ */
+export function parseTexLog(log: string, source?: string): TexError[] {
   const lines = log.split(/\r?\n/);
   const out: TexError[] = [];
 
@@ -36,6 +42,22 @@ export function parseTexLog(log: string): TexError[] {
     if (line.startsWith("!")) {
       const message = cleanMessage(line.slice(1));
       const { detail, lineNumber } = collectContext(lines, i + 1);
+
+      const missing = MISSING_FILE.exec(message);
+      if (missing) {
+        // TeX stops at an interactive prompt and then reports whatever line it
+        // was reading when it gave up — usually the *next* \usepackage. Blaming
+        // that line sends people to edit something that is not the problem.
+        const file = missing[1];
+        out.push({
+          line: findRequestingLine(source, file),
+          message: describeMissingFile(file),
+          detail,
+          severity: "error",
+        });
+        continue;
+      }
+
       out.push({
         line: lineNumber ?? matchInputLine(message),
         message: message || "TeX error",
@@ -97,6 +119,43 @@ function collectContext(
     if (lines[i].trim()) detail.push(lines[i]);
   }
   return { detail: detail.join("\n").trim(), lineNumber: null };
+}
+
+/**
+ * A missing file is almost never a mistake in the document — it is a package
+ * this build does not carry. Say that, rather than repeating TeX's phrasing and
+ * leaving the reader to wonder what they typed wrong.
+ */
+function describeMissingFile(file: string): string {
+  const name = file.replace(/\.(sty|cls|def|cfg|clo|fd)$/, "");
+  const kind = file.endsWith(".cls") ? "document class" : "package";
+  return (
+    `The ${kind} "${name}" is not in this editor's TeX Live bundle, so the ` +
+    `document cannot be typeset. Remove it, or open an issue to have it added.`
+  );
+}
+
+/**
+ * Find where the document asked for a package. Matches `\usepackage{a,b}`,
+ * `\RequirePackage`, and `\documentclass`, so the reported line is the one
+ * worth editing.
+ */
+function findRequestingLine(source: string | undefined, file: string): number | null {
+  if (!source) return null;
+  const name = file.replace(/\.(sty|cls|def|cfg|clo|fd)$/, "");
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    String.raw`\\(?:usepackage|RequirePackage|documentclass)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}`,
+  );
+
+  const lines = source.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const match = pattern.exec(lines[i]);
+    if (!match) continue;
+    const requested = match[1].split(",").map((entry) => entry.trim());
+    if (requested.some((entry) => new RegExp(`^${escaped}$`).test(entry))) return i + 1;
+  }
+  return null;
 }
 
 function matchInputLine(text: string): number | null {

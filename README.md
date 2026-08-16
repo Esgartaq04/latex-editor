@@ -24,7 +24,7 @@ A real TeX engine — pdftex, compiled to WebAssembly — runs in the visitor's 
                                     ┌───────────────────▼──────────────────┐
                                     │  Static CDN — no functions           │
                                     │  /swiftlatex/*.wasm                  │
-                                    │  /texlive/files/*   (gzipped)        │
+                                    │  /texlive/files/*                    │
                                     │  /texlive/manifest.json              │
                                     └──────────────────────────────────────┘
 ```
@@ -95,8 +95,8 @@ So this project hosts TeX Live itself, as static files:
 
 **`scripts/build-texlive-cache.mjs`** does the work, in three phases:
 
-1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 20 documents, recording every file the engine asks for.
-2. **Write.** Copy the recorded files to `public/texlive/files/`, gzip them, trim the 4.9 MB font map down to the 92 entries whose fonts actually shipped, and write a manifest.
+1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 23 documents, recording every file the engine asks for.
+2. **Write.** Copy the recorded files to `public/texlive/files/`, trim the 5.1 MB font map down to the 166 entries whose fonts actually shipped, and write the manifest the browser shim resolves against.
 3. **Verify.** Recompile the entire corpus against nothing but the generated store, through the same shim the deployed site uses.
 
 The engine decides what ships, not a hand-written package list. Phase 3 is the point: a store is only useful if it is provably sufficient on its own.
@@ -112,7 +112,7 @@ npm run texlive:build
 
 `cm-super` is not optional. It supplies Type 1 versions of the EC fonts, which is what `\usepackage[T1]{fontenc}` selects for any family a document does not override. Without it those fonts exist only as METAFONT sources, the engine asks for bitmaps, and a perfectly ordinary CV fails with `Font ectt1095 at 600 not found`.
 
-Current store: **544 files, 33.2 MB on disk**, 13.6 MB once a host gzips it. A visitor only downloads the files their own document needs, so the store growing does not make anyone's page load slower.
+Current store: **585 files, 34.5 MB on disk**, 14.0 MB once a host gzips it. A visitor only downloads the files their own document needs, so the store growing does not make anyone's page load slower.
 
 ### How lookups are resolved without a server
 
@@ -125,9 +125,17 @@ kpathsea asks for `cmr10` and encodes "this is a TFM" in a numeric format code �
 
 Everything that is not a TeX Live lookup passes straight through to the native implementation.
 
-### Adding package support
+### When a document will not compile
 
-Add a document exercising the packages to `EXTRA_CORPUS` in `scripts/build-texlive-cache.mjs`, then re-run `npm run texlive:build`. The store grows by exactly what those packages need. If a package is missing at runtime the log says so and the error panel surfaces it.
+Check it against the shipped store, exactly as a visitor's browser would:
+
+```bash
+node scripts/check-document.mjs path/to/document.tex
+```
+
+It compiles the file through the real engine and the real shim, touching nothing but `public/texlive/`, and lists the files the store cannot supply — filtered to those a full TeX Live actually has, since kpathsea probes for far more names than exist. That is the whole answer in one run, rather than adding one package at a time and rebuilding in between.
+
+To add what it reports: put a document exercising those packages in `EXTRA_CORPUS` in `scripts/build-texlive-cache.mjs` and re-run `npm run texlive:build`. The store grows by exactly what they need, and the verification phase proves the result still compiles everything else.
 
 ## Project layout
 
@@ -181,7 +189,7 @@ Shipped (P0 and P1): split pane with persisted ratio, CodeMirror 6 with LaTeX hi
 
 Not shipped: KaTeX draft tier, image upload, multi-file projects, share-by-URL. Collaboration, accounts, SyncTeX and Biber remain out of scope.
 
-Fonts and packages covered by the store: the LaTeX base classes plus `beamer`, the AMS maths stack, the PSNFSS families (Charter, Times/`mathptmx`, Palatino/`mathpazo`, Helvetica, Courier), `newtx`, Libertine, XCharter, Latin Modern, the EC Type 1 fonts for `T1` encoding, and the usual layout packages — `geometry`, `titlesec`, `enumitem`, `tabularx`, `multicol`, `booktabs`, `hyperref`, `xcolor`, `fancyhdr`, `listings`, `microtype`, `graphicx`.
+Fonts and packages covered by the store: the LaTeX base classes plus `beamer`, the AMS maths stack, TikZ, the PSNFSS families (Charter, Times/`mathptmx`, Palatino/`mathpazo`, Helvetica, Courier), `newtx`, Libertine, XCharter, Latin Modern, the EC Type 1 fonts for `T1` encoding, and the usual layout and authoring packages — `geometry`, `titlesec`, `enumitem`, `tabularx`, `multicol`, `booktabs`, `hyperref`, `xcolor`, `fancyhdr`, `listings`, `microtype`, `graphicx`, `comment`, `etoolbox`, `calc`, `soul`, `ragged2e`, `algorithm`/`algpseudocode`, `siunitx`, `csquotes`, `wrapfig`.
 
 Known limits:
 

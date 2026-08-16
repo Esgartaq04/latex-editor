@@ -195,6 +195,108 @@ Linux Libertine, \textbf{bold}, \textit{italic}, \textsc{caps}.
 XCharter body text, \textbf{bold}, \textit{italic}.
 \end{document}
 `,
+  // The shape a real CV preamble takes: a font package, tabularx-based entry
+  // macros, titlesec section rules, and `comment` to keep unfinished sections
+  // out of the output.
+  "resume-machinery": String.raw`\documentclass[letterpaper,10pt]{article}
+\usepackage[top=0.4in, bottom=0.4in, left=0.45in, right=0.45in]{geometry}
+\usepackage{charter}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{comment}
+\usepackage{calc}
+\usepackage{ifthen}
+\usepackage{etoolbox}
+\usepackage{xspace}
+\usepackage{soul}
+\usepackage{ragged2e}
+\usepackage{hyphenat}
+\usepackage[hidelinks]{hyperref}
+
+\excludecomment{hidden}
+\pagestyle{empty}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{\vspace{-2pt}\scshape\large}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+\setlist[itemize]{topsep=0pt, partopsep=0pt, parsep=0pt, itemsep=1pt,
+  leftmargin=0.16in, labelsep=0.05in, label=\textbullet}
+
+\newcommand{\entry}[4]{%
+  \vspace{5pt}
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{#1} & #2 \\ \textit{\small #3} & \textit{\small #4} \\
+  \end{tabularx}\vspace{-6pt}}
+\newenvironment{bullets}{\begin{itemize}}{\end{itemize}\vspace{-4pt}}
+
+\begin{document}
+\begin{center}
+  {\LARGE \textbf{Example Name}} \\ \vspace{2pt}
+  \small \href{https://example.com}{example.com} $|$ 555-0100
+\end{center}
+\vspace{-6pt}
+
+\section{Education}
+\entry{A University}{2023 -- 2027}{BSc Computer Science}{City, ST}
+\begin{hidden}
+\entry{Not Rendered}{2021 -- 2023}{Hidden by \texttt{comment}}{City, ST}
+\end{hidden}
+
+\section{Experience}
+\entry{Software Engineering Intern}{2026}{A Company}{City, ST}
+\begin{bullets}
+  \item Grew a \$10,000 account to $\sim$\$15,000 ($\sim$50\% return).
+  \item Achieved 99.9\% uptime; wrote \texttt{code} that shipped.
+\end{bullets}
+\end{document}
+`,
+  // Coursework territory: algorithms, units, quotes, wrapped figures.
+  "coursework": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{siunitx}
+\usepackage{csquotes}
+\usepackage{wrapfig}
+\usepackage{lastpage}
+\usepackage{url}
+\begin{document}
+\begin{algorithm}
+\caption{Binary search}
+\begin{algorithmic}[1]
+  \State $lo \gets 0$
+  \While{$lo < hi$}
+    \State $mid \gets \lfloor (lo+hi)/2 \rfloor$
+  \EndWhile
+  \State \Return $lo$
+\end{algorithmic}
+\end{algorithm}
+A measurement of \SI{3.5}{\kilo\gram} and \enquote{a quotation}.
+\end{document}
+`,
+  // TikZ is a large closure but too common to leave out — diagrams in reports,
+  // plots in lab write-ups.
+  "tikz": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+\begin{document}
+\begin{tikzpicture}[node distance=2cm]
+  \node (a) [draw, rectangle] {Source};
+  \node (b) [draw, ellipse, right=of a] {Sink};
+  \draw [-{Stealth}] (a) -- (b) node [midway, above] {edge};
+\end{tikzpicture}
+\end{document}
+`,
   "resume-layout": String.raw`\documentclass[11pt]{article}
 \usepackage[T1]{fontenc}
 \usepackage[margin=0.75in]{geometry}

@@ -38,6 +38,7 @@ tmrm108r NimbusRomNo9L-Regu " TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pf
 tmro108r NimbusRomNo9L-Regu " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
 tmui108r NimbusRomNo9L-ReguItal " -.277 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmri8a.pfb
 ectt1095 SFTT1095 " T1Encoding ReEncodeFont " <cm-super-t1.enc <sftt1095.pfb
+ectt1000 SFTT1000 " T1Encoding ReEncodeFont " <cm-super-t1.enc <sftt1000.pfb
 cmbx10 CMBX10 <cmbx10.pfb
 cmbx12 CMBX12 <cmbx12.pfb
 cmcsc10 CMCSC10 <cmcsc10.pfb
@@ -59,6 +60,7 @@ cmssbx10 CMSSBX10 <cmssbx10.pfb
 cmssi10 CMSSI10 <cmssi10.pfb
 cmsy10 CMSY10 <cmsy10.pfb
 cmsy8 CMSY8 <cmsy8.pfb
+cmsy9 CMSY9 <cmsy9.pfb
 cmti10 CMTI10 <cmti10.pfb
 cmtt10 CMTT10 <cmtt10.pfb
 msam10 MSAM10 <msam10.pfb

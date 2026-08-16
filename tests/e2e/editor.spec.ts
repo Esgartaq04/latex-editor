@@ -90,6 +90,67 @@ test("downloads the source and the compiled PDF", async ({ page }) => {
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
 });
 
+test("compiles a Charter résumé", async ({ page }) => {
+  // A CV that switches the body font is the most common real document people
+  // paste in, and it exercises the two things most likely to be missing: a
+  // PSNFSS font package, and T1 text fonts for the families it does not
+  // override (which need cm-super Type 1, not bitmaps).
+  await page.goto(HOME);
+  await waitForRender(page);
+
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type(
+    [
+      "\\documentclass[11pt]{article}",
+      "\\usepackage[margin=0.75in]{geometry}",
+      "\\usepackage{charter}",
+      "\\usepackage[T1]{fontenc}",
+      "\\usepackage{enumitem}",
+      "\\usepackage[hidelinks]{hyperref}",
+      "\\pagestyle{empty}",
+      "\\begin{document}",
+      "\\begin{center}{\\LARGE \\textbf{Your Name}}\\end{center}",
+      "\\section*{Experience}",
+      "\\begin{itemize}[leftmargin=*]",
+      "\\item Shipped \\texttt{something} measurable.",
+      "\\end{itemize}",
+      "\\end{document}",
+    ].join("\n"),
+  );
+
+  await page.getByTestId("compile").click();
+  await expect(page.getByTestId("status")).toContainText("Compiled", { timeout: 90_000 });
+  expect(await page.locator('[data-testid="pdf-pages"] canvas').count()).toBeGreaterThan(0);
+});
+
+test("names the package when one is genuinely missing", async ({ page }) => {
+  await page.goto(HOME);
+  await waitForRender(page);
+
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type(
+    [
+      "\\documentclass{article}",
+      "\\usepackage{definitelynotarealpackage}",
+      "\\usepackage{amsmath}",
+      "\\begin{document}",
+      "Hi",
+      "\\end{document}",
+    ].join("\n"),
+  );
+
+  await page.getByTestId("compile").click();
+
+  const panel = page.getByTestId("error-panel");
+  await expect(panel).toBeVisible({ timeout: 90_000 });
+  await expect(panel).toContainText("definitelynotarealpackage");
+  await expect(panel).toContainText("not in this editor's TeX Live bundle");
+  // Line 2 is the \usepackage, not line 3 where TeX actually stopped.
+  await expect(panel.getByRole("button", { name: /line 2/ })).toBeVisible();
+});
+
 test("restores the document from IndexedDB after a reload", async ({ page }) => {
   await page.goto(HOME);
   await waitForRender(page);

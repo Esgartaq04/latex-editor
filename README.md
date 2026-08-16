@@ -95,7 +95,7 @@ So this project hosts TeX Live itself, as static files:
 
 **`scripts/build-texlive-cache.mjs`** does the work, in three phases:
 
-1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 13 documents, recording every file the engine asks for.
+1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 20 documents, recording every file the engine asks for.
 2. **Write.** Copy the recorded files to `public/texlive/files/`, gzip them, trim the 4.9 MB font map down to the 92 entries whose fonts actually shipped, and write a manifest.
 3. **Verify.** Recompile the entire corpus against nothing but the generated store, through the same shim the deployed site uses.
 
@@ -105,11 +105,14 @@ The engine decides what ships, not a hand-written package list. Phase 3 is the p
 # Needs a local TeX Live and a Chromium. Output is committed, so a normal
 # `npm run build` never runs this.
 sudo apt-get install texlive-latex-recommended texlive-latex-extra \
-                     texlive-fonts-recommended texlive-pictures
+                     texlive-fonts-recommended texlive-fonts-extra \
+                     texlive-pictures texlive-plain-generic cm-super
 npm run texlive:build
 ```
 
-Current store: **348 files, 28.5 MB on disk**, 9.6 MB once a host gzips it.
+`cm-super` is not optional. It supplies Type 1 versions of the EC fonts, which is what `\usepackage[T1]{fontenc}` selects for any family a document does not override. Without it those fonts exist only as METAFONT sources, the engine asks for bitmaps, and a perfectly ordinary CV fails with `Font ectt1095 at 600 not found`.
+
+Current store: **544 files, 33.2 MB on disk**, 13.6 MB once a host gzips it. A visitor only downloads the files their own document needs, so the store growing does not make anyone's page load slower.
 
 ### How lookups are resolved without a server
 
@@ -178,8 +181,11 @@ Shipped (P0 and P1): split pane with persisted ratio, CodeMirror 6 with LaTeX hi
 
 Not shipped: KaTeX draft tier, image upload, multi-file projects, share-by-URL. Collaboration, accounts, SyncTeX and Biber remain out of scope.
 
+Fonts and packages covered by the store: the LaTeX base classes plus `beamer`, the AMS maths stack, the PSNFSS families (Charter, Times/`mathptmx`, Palatino/`mathpazo`, Helvetica, Courier), `newtx`, Libertine, XCharter, Latin Modern, the EC Type 1 fonts for `T1` encoding, and the usual layout packages — `geometry`, `titlesec`, `enumitem`, `tabularx`, `multicol`, `booktabs`, `hyperref`, `xcolor`, `fancyhdr`, `listings`, `microtype`, `graphicx`.
+
 Known limits:
 
+- **A package outside the store cannot be fetched at runtime.** There is no server to fetch it from — that is the trade for free hosting. The error panel names the package and points at the line that asked for it; adding it means a corpus entry and a rebuild.
 - **BibTeX only, no Biber.** `bibtex` is compiled into the engine and runs automatically; `biber` is a separate binary and is not available.
 - **TikZ/PGF is not in the shipped store.** It is a large dependency closure; add it to the corpus and rebuild if you need it.
 - **XeTeX is not wired up.** Only the pdftex engine ships. The store and shim are engine-specific.

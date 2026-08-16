@@ -143,6 +143,105 @@ A & B & C \\
 \rotatebox{15}{Rotated} \scalebox{1.5}{Scaled}
 \end{document}
 `,
+  // Résumés and CVs are the single most common thing people paste into an
+  // editor like this, and they almost always switch the body font. Each roman
+  // family needs its own document because they all redefine \rmdefault.
+  "font-charter": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{charter}
+\begin{document}
+\section*{Charter}
+Body text in Charter, \textbf{bold}, \textit{italic}, \texttt{mono}, \textsc{caps}.
+$f(x) = x^2 + 1$
+\end{document}
+`,
+  "font-times-helvet-courier": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage[scaled=0.9]{helvet}
+\usepackage{courier}
+\begin{document}
+\rmfamily Times \textbf{bold} \textit{italic}
+\sffamily Helvetica \textbf{bold}
+\ttfamily Courier
+\rmfamily $\int_0^1 x\,dx$
+\end{document}
+`,
+  "font-palatino": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{mathpazo}
+\begin{document}
+Palatino body text, \textbf{bold}, \textit{italic}. $\sum_{i=1}^n i$
+\end{document}
+`,
+  "font-newtx": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\begin{document}
+Times clone with matching maths. \textbf{Bold} \textit{italic}. $\alpha+\beta$
+\end{document}
+`,
+  "font-libertine": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{libertine}
+\begin{document}
+Linux Libertine, \textbf{bold}, \textit{italic}, \textsc{caps}.
+\end{document}
+`,
+  "font-xcharter": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{XCharter}
+\begin{document}
+XCharter body text, \textbf{bold}, \textit{italic}.
+\end{document}
+`,
+  "resume-layout": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{charter}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage{ragged2e}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{marvosym}
+\usepackage[hidelinks]{hyperref}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\pagestyle{empty}
+
+\begin{document}
+\begin{center}
+  {\LARGE \textbf{Your Name}}\\[2pt]
+  \href{mailto:you@example.com}{you@example.com} $\cdot$ City, Country
+\end{center}
+
+\section{Experience}
+\textbf{Job Title}, Company \hfill 2023--present
+\begin{itemize}[leftmargin=*, noitemsep, topsep=2pt]
+  \item Did a thing that had a measurable result.
+  \item Did another thing.
+\end{itemize}
+
+\section{Education}
+\begin{tabularx}{\textwidth}{@{}lXr@{}}
+  BSc Something & University & 2019--2023 \\
+\end{tabularx}
+
+\section{Skills}
+\begin{multicols}{2}
+\begin{itemize}[leftmargin=*, noitemsep]
+  \item One
+  \item Two
+\end{itemize}
+\end{multicols}
+\end{document}
+`,
   "hyperref+geometry": String.raw`\documentclass{article}
 \usepackage[a4paper,margin=2cm]{geometry}
 \usepackage[colorlinks=true]{hyperref}
@@ -220,11 +319,24 @@ function trimFontMap(text, available) {
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("%") || trimmed.startsWith("#")) continue;
-    const references = [...trimmed.matchAll(/<{1,2}\s*([^\s<]+)/g)].map((m) => m[1]);
+    const references = fontMapReferences(trimmed);
     if (references.length === 0) continue;
     if (references.every((reference) => available.has(reference))) kept.push(trimmed);
   }
   return kept.join("\n") + "\n";
+}
+
+/**
+ * File names referenced by a pdftex map line.
+ *
+ * The `<` prefixes are directives, not part of the name: `<file` subsets it,
+ * `<<file` includes it whole, and `<[file` marks an encoding. Leaving the `[`
+ * attached makes every entry that uses an encoding file look unsatisfiable, so
+ * the whole font family gets trimmed away and documents that compiled during
+ * discovery fail against the store.
+ */
+function fontMapReferences(line) {
+  return [...line.matchAll(/<{1,2}\[?\s*([^\s<[]+)/g)].map((match) => match[1]);
 }
 
 async function discover(corpus) {

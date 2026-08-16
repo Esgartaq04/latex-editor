@@ -80,7 +80,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       // A newer compile started while this one ran; its result wins.
       if (get().compileId !== id) return;
 
-      const errors = parseTexLog(outcome.log);
+      const errors = parseTexLog(outcome.log, source);
       set({
         pdf: outcome.ok && outcome.pdf ? outcome.pdf : get().pdf,
         status: outcome.ok ? "success" : "error",

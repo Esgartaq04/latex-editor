@@ -12,7 +12,7 @@
  */
 
 import { createWriteStream } from "node:fs";
-import { mkdir, copyFile, stat } from "node:fs/promises";
+import { mkdir, copyFile, stat, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import path from "node:path";
@@ -55,6 +55,15 @@ async function main() {
     const { size } = await stat(destination);
     console.log(`${(size / 1024 / 1024).toFixed(2)} MB`);
   }
+
+  // Recorded so the loading UI can show a percentage. Content-Length is no help:
+  // hosts that compress on the fly report the compressed size while the browser
+  // hands the reader decompressed bytes.
+  const { size: wasmBytes } = await stat(path.join(engineDir, "swiftlatexpdftex.wasm"));
+  await writeFile(
+    path.join(engineDir, "engine.json"),
+    JSON.stringify({ wasm: "swiftlatexpdftex.wasm", bytes: wasmBytes }) + "\n",
+  );
 
   const pdfjsDir = path.join(root, "public", "pdfjs");
   await mkdir(pdfjsDir, { recursive: true });

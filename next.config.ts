@@ -11,11 +11,16 @@ import type { NextConfig } from "next";
  * Cache headers live in `vercel.json` and `public/_headers` instead of here,
  * because `headers()` is not applied to a static export.
  */
+// Set to "/<repo>" when deploying to a GitHub Pages project site; left empty
+// for a root deployment. Read by lib/basePath.ts for asset URLs too.
+const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   output: "export",
   reactStrictMode: true,
   images: { unoptimized: true },
   eslint: { ignoreDuringBuilds: true },
+  ...(basePath ? { basePath, assetPrefix: basePath } : {}),
 };
 
 export default nextConfig;

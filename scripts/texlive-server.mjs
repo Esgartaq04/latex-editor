@@ -179,9 +179,6 @@ export async function startTexliveServer({ port = 0, overlay = new Map(), mode =
       const body = await readFile(file);
       res.writeHead(200, {
         "content-type": MIME[path.extname(file)] ?? "application/octet-stream",
-        // The store is stored pre-compressed; mirror what the CDN is
-        // configured to send so verification exercises the real path.
-        ...(pathname.startsWith("/texlive/files/") ? { "content-encoding": "gzip" } : {}),
       });
       res.end(body);
     } catch {

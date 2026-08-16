@@ -11,11 +11,12 @@
 /pdfjs/*
   Cache-Control: public, max-age=31536000, immutable
 
-# The store is committed pre-compressed. Hosts do not compress these content
-# types on their own, and the format dump is 21 MB raw against 5.7 MB gzipped.
+# The store is served uncompressed and compressed by the host. Do NOT
+# pre-compress these and set Content-Encoding here: a host that also compresses
+# on the fly (GitHub Pages does) leaves the browser stripping one layer and the
+# engine reading gzip bytes where it expected a font.
 /texlive/files/*
   Cache-Control: public, max-age=31536000, immutable
-  Content-Encoding: gzip
 
 # The manifest is the one file that changes when the store is rebuilt.
 /texlive/manifest.json

@@ -1,3 +1,4 @@
+import { BASE_PATH } from "@/lib/basePath";
 import type { CompileRequest, TexError } from "./types";
 
 /**
@@ -12,10 +13,10 @@ import type { CompileRequest, TexError } from "./types";
  *  - the WASM prefetch, so the download has an observable byte count.
  */
 
-const ENGINE_DIR = "/swiftlatex/";
+const ENGINE_DIR = BASE_PATH + "/swiftlatex/";
 const WORKER_URL = ENGINE_DIR + "texpane-engine.js";
 const WASM_URL = ENGINE_DIR + "swiftlatexpdftex.wasm";
-const TEXLIVE_DIR = "/texlive/";
+const TEXLIVE_DIR = BASE_PATH + "/texlive/";
 
 /** A pass that produces no PDF at all is broken; retrying will not help. */
 const DEFAULT_MAX_PASSES = 3;
@@ -86,18 +87,18 @@ export class TexEngine {
     this.wasmPrefetched = true;
 
     try {
-      const assets: { url: string; bytes: number }[] = [];
+      // Sizes come from these two small files rather than Content-Length: a
+      // host that compresses on the fly reports the compressed size while the
+      // reader yields decompressed bytes, which would make the bar wrong
+      // everywhere it matters.
+      const [engine, manifest] = await Promise.all([
+        fetch(ENGINE_DIR + "engine.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch(TEXLIVE_DIR + "manifest.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
 
-      const wasmHead = await fetch(WASM_URL, { method: "HEAD" });
-      assets.push({
-        url: WASM_URL,
-        bytes: Number(wasmHead.headers.get("content-length") ?? 0),
-      });
-
-      // The store is served gzipped, so Content-Length is the compressed size
-      // while the stream yields decompressed bytes. The manifest carries the
-      // decompressed size so the percentage is not nonsense.
-      const manifest = await (await fetch(TEXLIVE_DIR + "manifest.json")).json();
+      const assets: { url: string; bytes: number }[] = [
+        { url: WASM_URL, bytes: Number(engine?.bytes ?? 0) },
+      ];
       if (manifest?.format?.name) {
         assets.push({
           url: `${TEXLIVE_DIR}files/${manifest.format.name}`,

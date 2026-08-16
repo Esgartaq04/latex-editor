@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useEditorStore } from "@/lib/store/editorStore";
+import { asset } from "@/lib/basePath";
 
 /**
  * pdf.js is used directly rather than through a React wrapper because the one
@@ -19,7 +20,7 @@ let pdfjsPromise: Promise<PdfjsModule> | null = null;
 function loadPdfjs(): Promise<PdfjsModule> {
   if (!pdfjsPromise) {
     pdfjsPromise = import("pdfjs-dist").then((mod) => {
-      mod.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
+      mod.GlobalWorkerOptions.workerSrc = asset("/pdfjs/pdf.worker.min.mjs");
       return mod;
     });
   }

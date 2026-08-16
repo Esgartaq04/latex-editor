@@ -6,6 +6,12 @@ import { test, expect, type Page } from "@playwright/test";
  * whole product rests on: type, compile, see a PDF, download it.
  */
 
+/**
+ * Where the app is served. Matches the build's NEXT_PUBLIC_BASE_PATH so the
+ * same suite covers a root deployment and a GitHub Pages project site.
+ */
+const HOME = `${(process.env.BASE_PATH ?? "").replace(/\/$/, "")}/`;
+
 /** The starter document has to make it all the way to rendered canvases. */
 async function waitForRender(page: Page) {
   await expect(page.locator('[data-testid="pdf-pages"] canvas').first()).toBeVisible({
@@ -14,7 +20,7 @@ async function waitForRender(page: Page) {
 }
 
 test("compiles the starter document and renders a PDF", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(HOME);
 
   await expect(page.getByTestId("editor")).toBeVisible();
   await waitForRender(page);
@@ -25,7 +31,7 @@ test("compiles the starter document and renders a PDF", async ({ page }) => {
 });
 
 test("recompiles after an edit and keeps the scroll position", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(HOME);
   await waitForRender(page);
 
   const scroller = page.getByTestId("pdf-scroll");
@@ -45,7 +51,7 @@ test("recompiles after an edit and keeps the scroll position", async ({ page }) 
 });
 
 test("reports a syntax error against the right line", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(HOME);
   await waitForRender(page);
 
   await page.locator(".cm-content").click();
@@ -63,7 +69,7 @@ test("reports a syntax error against the right line", async ({ page }) => {
 });
 
 test("downloads the source and the compiled PDF", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(HOME);
   await waitForRender(page);
 
   const texDownload = page.waitForEvent("download");
@@ -85,7 +91,7 @@ test("downloads the source and the compiled PDF", async ({ page }) => {
 });
 
 test("restores the document from IndexedDB after a reload", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(HOME);
   await waitForRender(page);
 
   await page.locator(".cm-content").click();

@@ -50,33 +50,40 @@ npm run test:e2e        # Playwright: type → compile → render → download
 
 **Nothing, on any static host.** Compilation happens on the visitor's device, so there is no function to invoke, no container to keep warm, no database, and no per-user cost. The build output is HTML, JS, WASM and a directory of TeX Live files.
 
-Recommended, cheapest first:
-
 | Host | Cost | Notes |
 | --- | --- | --- |
-| **Cloudflare Pages** | Free, **unlimited bandwidth** | The cheapest option that stays cheap. `public/_headers` is already written for it. Build command `npm run build`, output directory `out`. |
-| **Vercel Hobby** | Free, 100 GB/month | `vercel.json` is already written for it. At the measured first-visit cost that is roughly 11,000 cold visits a month before the cap. |
-| **GitHub Pages / Netlify / S3** | Free / pennies | Any host that serves files and lets you set two response headers works. |
+| **GitHub Pages** | Free | Deployed by `.github/workflows/deploy-pages.yml`. Compresses every response on the fly, so the wire cost matches the table below with nothing to configure. See the setup step below — it needs one setting changed. |
+| **Cloudflare Pages** | Free, **unlimited bandwidth** | `public/_headers` is already written for it. Build command `npm run build`, output directory `out`. |
+| **Vercel Hobby** | Free, 100 GB/month | `vercel.json` is already written for it — roughly 11,000 cold visits a month before the cap. |
+| **Netlify / S3 / any static host** | Free / pennies | Nothing host-specific is required. |
 
-The two headers that matter are in both config files, and a host that cannot set them is the one thing that will break a deployment:
+`Cache-Control: immutable` on `/swiftlatex/*`, `/pdfjs/*` and `/texlive/files/*` is what makes a repeat visit free. It is set in both config files; a host that ignores it still works, it just revalidates.
 
-- `Content-Encoding: gzip` on `/texlive/files/*` — the store is committed pre-compressed (see below).
-- `Cache-Control: immutable` on `/swiftlatex/*`, `/pdfjs/*` and `/texlive/files/*` — this is what makes a repeat visit free.
+> **Do not pre-compress the TeX Live store and set `Content-Encoding: gzip` yourself.** It is tempting — the format dump is 21 MB raw against 5.6 MB gzipped — but hosts that compress on the fly then compress it *again*. The browser strips exactly one layer and hands the engine gzip bytes where it expected a font, and every document fails to compile. GitHub Pages does this to every response regardless of content type. Ship the files raw and let the host compress; the worst case is a host that does not, which costs bandwidth rather than breaking the site.
+
+### Deploying to GitHub Pages
+
+GitHub Pages defaults to "deploy from a branch", which runs Jekyll over the repository, renders `README.md` as the home page, and never builds the app. **Change Settings → Pages → Source to "GitHub Actions".** The workflow then builds the static export and publishes that.
+
+Two details it handles that are easy to miss:
+
+- A project site is served from `/<repo>/`, so the build sets `NEXT_PUBLIC_BASE_PATH` from the Pages configuration and every absolute asset URL — the WASM engine, the TeX Live store, the pdf.js worker — carries the prefix. Run the suite against a subpath build with `BASE_PATH=/latex-editor npx playwright test` after `NEXT_PUBLIC_BASE_PATH=/latex-editor npm run build`.
+- `public/.nojekyll` stops Jekyll from stripping `_next/`, which it would otherwise drop for starting with an underscore, taking the entire app with it.
 
 ### Measured first visit
 
-Taken from a real cold load of the built site, counting bytes on the wire:
+Taken from a real cold load of the built site, counting bytes on the wire with the host compressing:
 
 | | Over the wire |
 | --- | --- |
-| Format file (`swiftlatexpdftex.fmt`, gzipped) | 5.60 MB |
+| Format file (`swiftlatexpdftex.fmt`) | 5.60 MB |
 | WASM engine + glue | 1.78 MB |
 | App JS/CSS | 1.10 MB |
-| TeX Live files for this document (85 files, gzipped) | 0.63 MB |
+| TeX Live files for this document (85 files) | 0.63 MB |
 | **Total, first visit** | **9.14 MB** |
 | **Total, repeat visit** | **~0** — everything above is `immutable` |
 
-Uncompressed that same load is 28.8 MB, which is why the store ships pre-compressed rather than trusting a host to compress a binary content type.
+Uncompressed that same load is 28.8 MB. On a host that does not compress binary content types the site still works — it just costs 28.8 MB instead of 9.14 MB.
 
 ## The part the plan got wrong
 
@@ -102,7 +109,7 @@ sudo apt-get install texlive-latex-recommended texlive-latex-extra \
 npm run texlive:build
 ```
 
-Current store: **348 files, 9.6 MB gzipped** (28.5 MB decompressed).
+Current store: **348 files, 28.5 MB on disk**, 9.6 MB once a host gzips it.
 
 ### How lookups are resolved without a server
 
@@ -181,7 +188,8 @@ Known limits:
 ## Deployment checklist
 
 - [ ] `curl -I .../swiftlatex/swiftlatexpdftex.wasm` returns `Content-Type: application/wasm`
-- [ ] `curl -I .../texlive/files/article.cls` returns `Content-Encoding: gzip` **and** `Cache-Control: immutable`
-- [ ] `curl -s .../texlive/files/article.cls | file -` says gzip, and the browser renders the starter document
+- [ ] `curl -s --compressed .../texlive/files/article.cls | head -3` shows **LaTeX source, not gzip bytes**. If it looks binary the store is being double-compressed and nothing will compile.
+- [ ] `curl -I .../texlive/files/article.cls` returns `Cache-Control: immutable` (or the host's own long max-age)
+- [ ] The page loads and the starter document renders — on a project site, at `/<repo>/`, not the root
 - [ ] First load timed on a throttled connection — the format file is 5.6 MB and dominates
 - [ ] Tested on Safari

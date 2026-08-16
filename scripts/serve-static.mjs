@@ -13,6 +13,12 @@ import path from "node:path";
 
 const directory = path.resolve(process.argv[2] ?? "out");
 const port = Number(process.argv[3] ?? process.env.PORT ?? 3000);
+/**
+ * Mount prefix, matching a GitHub Pages project site. Set BASE_PATH to the same
+ * value the build used so the exported site can be exercised exactly as it will
+ * be served — a base-path bug is invisible at the root.
+ */
+const basePath = (process.env.BASE_PATH ?? "").replace(/\/$/, "");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -31,7 +37,19 @@ const IMMUTABLE = /^\/(swiftlatex|pdfjs|texlive\/files|_next\/static)\//;
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
-  const pathname = decodeURIComponent(url.pathname);
+  let pathname = decodeURIComponent(url.pathname);
+
+  if (basePath) {
+    if (pathname === basePath) {
+      res.writeHead(302, { location: basePath + "/" }).end();
+      return;
+    }
+    if (!pathname.startsWith(basePath + "/")) {
+      res.writeHead(404).end("not found");
+      return;
+    }
+    pathname = pathname.slice(basePath.length);
+  }
 
   let file = path.join(directory, pathname);
   if (!file.startsWith(directory)) {
@@ -48,9 +66,6 @@ const server = createServer(async (req, res) => {
       "cache-control": IMMUTABLE.test(pathname)
         ? "public, max-age=31536000, immutable"
         : "public, max-age=0, must-revalidate",
-      // The TeX Live store is committed pre-compressed — see vercel.json and
-      // public/_headers for the same rule on the real hosts.
-      ...(pathname.startsWith("/texlive/files/") ? { "content-encoding": "gzip" } : {}),
     });
     res.end(body);
   } catch {

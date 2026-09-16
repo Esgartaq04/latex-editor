@@ -359,6 +359,108 @@ See Section~\ref{sec:links} and \url{https://example.com}.
 `,
 };
 
+/**
+ * Breadth coverage.
+ *
+ * The curated corpus above proves that realistic *documents* work, but it only
+ * ever covers packages someone thought to include — which means a user finds
+ * the gaps one report at a time. This list is the other half: each entry gets a
+ * minimal document of its own, so loading it is exercised and its files land in
+ * the store.
+ *
+ * One package per document on purpose. Font and layout packages conflict with
+ * each other (every one of them redefines something), and isolating them means
+ * a package that cannot work in this engine fails alone instead of taking a
+ * batch down with it.
+ *
+ * A failure here is a warning, not an error: some packages genuinely cannot run
+ * in a browser engine (anything wanting shell-escape or an external binary).
+ * The curated corpus stays strict — that is the contract.
+ *
+ * `body` is only needed when merely loading the package does not pull in what
+ * documents actually use, which is typically fonts.
+ */
+const SMOKE_PACKAGES = [
+  // Tables. `colortbl` is what `\usepackage[table]{xcolor}` loads.
+  { name: "colortbl", body: String.raw`\begin{tabular}{|>{\columncolor{yellow}}l|c|}\hline
+\rowcolor{gray!20} A & B \\\hline X & Y \\\hline\end{tabular}`, also: ["xcolor"] },
+  { name: "multirow", body: String.raw`\begin{tabular}{|l|l|}\hline\multirow{2}{*}{A} & B \\ & C \\\hline\end{tabular}` },
+  { name: "makecell", body: String.raw`\begin{tabular}{|l|}\hline\makecell{A\\B} \\\hline\end{tabular}` },
+  { name: "hhline", body: String.raw`\begin{tabular}{|l|l|}\hline A & B \\\hhline{==} C & D \\\hline\end{tabular}` },
+  { name: "threeparttable" },
+  { name: "rotating" },
+  { name: "adjustbox", body: String.raw`\adjustbox{width=2cm}{Scaled}` },
+  { name: "changepage" },
+  { name: "arydshln" },
+
+  // Boxes and framing — homework templates lean on these heavily.
+  { name: "tcolorbox", body: String.raw`\begin{tcolorbox}Boxed.\end{tcolorbox}` },
+  { name: "mdframed", body: String.raw`\begin{mdframed}Framed.\end{mdframed}` },
+  { name: "framed", body: String.raw`\begin{framed}Framed.\end{framed}` },
+  { name: "environ" },
+
+  // Maths notation.
+  { name: "cancel", body: String.raw`$\cancel{x}$` },
+  { name: "bm", body: String.raw`$\bm{x}$` },
+  { name: "mathrsfs", body: String.raw`$\mathscr{L}$` },
+  { name: "stmaryrd", body: String.raw`$\llbracket x \rrbracket$` },
+  { name: "dsfont", body: String.raw`$\mathds{R}$` },
+  { name: "amscd", body: String.raw`$\begin{CD} A @>>> B \end{CD}$` },
+  { name: "empheq" },
+  { name: "esint" },
+  { name: "accents" },
+  { name: "nicefrac", body: String.raw`$\nicefrac{1}{2}$` },
+  { name: "xfrac", body: String.raw`$\sfrac{1}{2}$` },
+  { name: "physics", body: String.raw`$\dv{f}{x}$ $\ket{\psi}$` },
+
+  // Proofs and algorithms — CS coursework.
+  { name: "bussproofs", body: String.raw`\begin{prooftree}\AxiomC{$A$}\UnaryInfC{$B$}\end{prooftree}` },
+  { name: "algorithm2e", body: String.raw`\begin{algorithm}[H]\caption{X}\KwIn{n}\Return $n$\end{algorithm}` },
+  { name: "thmtools" },
+
+  // Text and layout.
+  { name: "ulem", body: String.raw`\uline{underlined} \sout{struck}` },
+  { name: "pifont", body: String.raw`\ding{51}` },
+  { name: "paralist", body: String.raw`\begin{compactitem}\item One\end{compactitem}` },
+  { name: "enumerate", body: String.raw`\begin{enumerate}[(a)]\item One\end{enumerate}` },
+  { name: "cleveref", body: String.raw`\section{S}\label{sec:s}\Cref{sec:s}` },
+  { name: "appendix" },
+  { name: "titling" },
+  { name: "fullpage" },
+  { name: "tabto", body: String.raw`A\tabto{3cm}B` },
+  { name: "lipsum", body: String.raw`\lipsum[1]` },
+  { name: "blindtext", body: String.raw`\blindtext` },
+  { name: "todonotes" },
+
+  // Figures.
+  { name: "subfig" },
+  { name: "epsfig" },
+  // Verbatim's body must start on its own line — fancyvrb reads it linewise.
+  { name: "fancyvrb", body: "\\begin{Verbatim}\ncode\n\\end{Verbatim}" },
+
+  // Drawing and plotting on top of TikZ.
+  { name: "pgfplots", body: String.raw`\begin{tikzpicture}\begin{axis}\addplot coordinates {(0,0) (1,1)};\end{axis}\end{tikzpicture}` },
+  { name: "forest", body: String.raw`\begin{forest}[A[B][C]]\end{forest}` },
+  { name: "circuitikz", body: String.raw`\begin{circuitikz}\draw (0,0) to[R=$R$] (2,0);\end{circuitikz}` },
+  { name: "mhchem", body: String.raw`\ce{H2O}` },
+  { name: "chemfig" },
+];
+
+function smokeCorpus() {
+  const documents = {};
+  for (const entry of SMOKE_PACKAGES) {
+    const packages = [...(entry.also ?? []), entry.name]
+      .map((name) => `\\usepackage{${name}}`)
+      .join("\n");
+    documents[`pkg:${entry.name}`] =
+      `\\documentclass[11pt]{article}\n` +
+      `\\usepackage[T1]{fontenc}\n\\usepackage{lmodern}\n\\usepackage{amsmath,amssymb}\n` +
+      `${packages}\n\\begin{document}\n` +
+      `${entry.body ?? "Text with \\textbf{bold} and $x^{2}$."}\n\\end{document}\n`;
+  }
+  return documents;
+}
+
 async function loadTemplates() {
   try {
     const module = await import(path.join(root, "lib", "templates.ts"));
@@ -501,7 +603,7 @@ async function discover(corpus) {
   return { server, overlay, failures };
 }
 
-async function writeStore(server, overlay) {
+async function writeStore(server, overlay, supportedPackages = []) {
   await rm(FILES_DIR, { recursive: true, force: true });
   await mkdir(FILES_DIR, { recursive: true });
 
@@ -575,6 +677,9 @@ async function writeStore(server, overlay) {
       // percentage for the largest thing the first visit downloads.
       format: { name: "swiftlatexpdftex.fmt", bytes: formatBytes },
       files: names,
+      // Packages proven to load in this engine against this store. Generated
+      // from what actually compiled, so it cannot drift from reality.
+      packages: supportedPackages,
       aliases: Object.fromEntries([...server.aliases].sort()),
       formatExtensions,
     }) + "\n",
@@ -606,8 +711,13 @@ async function verify(corpus) {
 }
 
 async function main() {
-  const corpus = { ...(await loadTemplates()), ...EXTRA_CORPUS };
-  console.log(`Corpus: ${Object.keys(corpus).length} documents\n`);
+  const curated = { ...(await loadTemplates()), ...EXTRA_CORPUS };
+  const smoke = smokeCorpus();
+  const corpus = { ...curated, ...smoke };
+  console.log(
+    `Corpus: ${Object.keys(curated).length} documents + ` +
+      `${Object.keys(smoke).length} package smoke tests\n`,
+  );
 
   console.log("── Discovery ──────────────────────────────────");
   const { server, overlay, failures } = await discover(corpus);
@@ -618,22 +728,45 @@ async function main() {
     JSON.stringify({ lookups: server.lookups, missing: [...server.missing] }, null, 2),
   );
 
-  if (failures.length) {
-    reportFailures(failures);
+  // A smoke package that cannot run in this engine is information, not a build
+  // failure — the files it did fetch are still worth shipping. A curated
+  // document failing means the store would be incomplete for a real document.
+  const curatedFailures = failures.filter((f) => !f.name.startsWith("pkg:"));
+  const smokeFailures = failures.filter((f) => f.name.startsWith("pkg:"));
+
+  if (curatedFailures.length) {
+    reportFailures(curatedFailures);
     throw new Error(
-      `${failures.length} corpus document(s) failed during discovery; the store would be incomplete.`,
+      `${curatedFailures.length} corpus document(s) failed during discovery; the store would be incomplete.`,
     );
   }
 
-  const { names, stored, compressed } = await writeStore(server, overlay);
+  const unsupported = new Set(smokeFailures.map((f) => f.name));
+  if (unsupported.size) {
+    console.log(
+      `\n${unsupported.size} package(s) do not work in this engine and are not claimed as supported:`,
+    );
+    console.log(`  ${[...unsupported].map((n) => n.slice(4)).sort().join(", ")}`);
+  }
+
+  const supported = SMOKE_PACKAGES.map((entry) => entry.name)
+    .filter((name) => !unsupported.has(`pkg:${name}`))
+    .sort();
+
+  const { names, stored, compressed } = await writeStore(server, overlay, supported);
   const mb = (bytes) => (bytes / 1024 / 1024).toFixed(1);
   console.log(
     `\nWrote ${names.length} files to public/texlive/files/ — ` +
       `${mb(stored)} MB on disk, ${mb(compressed)} MB once a host gzips it`,
   );
 
+  // Only verify what discovery proved can compile at all.
+  const verifiable = Object.fromEntries(
+    Object.entries(corpus).filter(([name]) => !unsupported.has(name)),
+  );
+
   console.log("\n── Verification (static store only) ───────────");
-  const verificationFailures = await verify(corpus);
+  const verificationFailures = await verify(verifiable);
   if (verificationFailures.length) {
     reportFailures(verificationFailures);
     throw new Error(
@@ -641,7 +774,9 @@ async function main() {
     );
   }
 
-  console.log("\nEvery corpus document compiles from the static store alone.");
+  console.log(
+    `\nAll ${Object.keys(verifiable).length} documents compile from the static store alone.`,
+  );
   if (compressed > 25 * 1024 * 1024) {
     console.warn("Warning: the store is large over the wire. Consider trimming the corpus.");
   }

@@ -17,11 +17,13 @@ ptmr8rn NimbusRomNo9L-Regu " .82 ExtendFont TeXBase1Encoding ReEncodeFont " <8r.
 ptmri8r NimbusRomNo9L-ReguItal " TeXBase1Encoding ReEncodeFont " <8r.enc <utmri8a.pfb
 ptmro8r NimbusRomNo9L-Regu " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
 ptmrr8re NimbusRomNo9L-Regu " 1.2 ExtendFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
+pzdr Dingbats <uzdr.pfb
 rpxpplb URWPalladioL-Bold " TeXBase1Encoding ReEncodeFont " <8r.enc <uplb8a.pfb
 rpxpplbo URWPalladioL-Bold " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <uplb8a.pfb
 rpxpplr URWPalladioL-Roma " TeXBase1Encoding ReEncodeFont " <8r.enc <uplr8a.pfb
 rpxpplri URWPalladioL-Ital " TeXBase1Encoding ReEncodeFont " <8r.enc <uplri8a.pfb
 rpxpplro URWPalladioL-Roma " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <uplr8a.pfb
+rpzdr Dingbats <uzdr.pfb
 rtxphvb NimbusSanL-Bold " TeXBase1Encoding ReEncodeFont " <8r.enc <uhvb8a.pfb
 rtxphvbo NimbusSanL-Bold " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <uhvb8a.pfb
 rtxphvr NimbusSanL-Regu " TeXBase1Encoding ReEncodeFont " <8r.enc <uhvr8a.pfb
@@ -37,6 +39,7 @@ tmri108r NimbusRomNo9L-ReguItal " TeXBase1Encoding ReEncodeFont " <8r.enc <utmri
 tmrm108r NimbusRomNo9L-Regu " TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
 tmro108r NimbusRomNo9L-Regu " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
 tmui108r NimbusRomNo9L-ReguItal " -.277 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmri8a.pfb
+zd Dingbats <uzdr.pfb
 ectt1095 SFTT1095 " T1Encoding ReEncodeFont " <cm-super-t1.enc <sftt1095.pfb
 ectt1000 SFTT1000 " T1Encoding ReEncodeFont " <cm-super-t1.enc <sftt1000.pfb
 cmbx10 CMBX10 <cmbx10.pfb
@@ -63,6 +66,9 @@ cmsy8 CMSY8 <cmsy8.pfb
 cmsy9 CMSY9 <cmsy9.pfb
 cmti10 CMTI10 <cmti10.pfb
 cmtt10 CMTT10 <cmtt10.pfb
+line10 LINE10 <line10.pfb
+rsfs10 rsfs10 <rsfs10.pfb
+stmary10 stmary10 <stmary10.pfb
 msam10 MSAM10 <msam10.pfb
 XCharter-Bold-tlf-t1--base XCharter-Bold " AutoEnc_rydp4lirfokm2yleqgpye6uk6c ReEncodeFont " <[xch_rydp4l.enc <XCharter-Bold.pfb
 XCharter-Italic-tlf-t1--base XCharter-Italic " AutoEnc_rydp4lirfokm2yleqgpye6uk6c ReEncodeFont " <[xch_rydp4l.enc <XCharter-Italic.pfb
@@ -72,6 +78,7 @@ bchbo8r CharterBT-Bold " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc 
 bchr8r CharterBT-Roman " TeXBase1Encoding ReEncodeFont " <8r.enc <bchr8a.pfb
 bchri8r CharterBT-Italic " TeXBase1Encoding ReEncodeFont " <8r.enc <bchri8a.pfb
 bchro8r CharterBT-Roman " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <bchr8a.pfb
+dsrom10 dsrom10 <dsrom10.pfb
 LinLibertineT-tlf-sc-t1--base LinLibertineT " AutoEnc_ncsllpc66uz4nuc3hbkvugg34b ReEncodeFont " <[lbtn_ncsllp.enc <LinLibertineT.pfb
 LinLibertineT-tlf-t1--base LinLibertineT " AutoEnc_76gpa573ui462u7ov2a5iiyo2h ReEncodeFont " <[lbtn_76gpa5.enc <LinLibertineT.pfb
 LinLibertineTB-tlf-t1--base LinLibertineTB " AutoEnc_nh77jqgsewtkkvws7b4sl5iqee ReEncodeFont " <[lbtn_nh77jq.enc <LinLibertineTB.pfb
@@ -100,6 +107,8 @@ ec-lmtti10 LMMono10-Italic " enclmec ReEncodeFont " <lm-ec.enc <lmtti10.pfb
 lmex10 LMMathExtension10-Regular " enclmmathex ReEncodeFont " <lm-mathex.enc <lmex10.pfb
 lmmi10 LMMathItalic10-Regular " enclmmathit ReEncodeFont " <lm-mathit.enc <lmmi10.pfb
 lmmi7 LMMathItalic7-Regular " enclmmathit ReEncodeFont " <lm-mathit.enc <lmmi7.pfb
+lmmi8 LMMathItalic8-Regular " enclmmathit ReEncodeFont " <lm-mathit.enc <lmmi8.pfb
+lmmib10 LMMathItalic10-Bold " enclmmathit ReEncodeFont " <lm-mathit.enc <lmmib10.pfb
 lmsy10 LMMathSymbols10-Regular " enclmmathsy ReEncodeFont " <lm-mathsy.enc <lmsy10.pfb
 lmsy7 LMMathSymbols7-Regular " enclmmathsy ReEncodeFont " <lm-mathsy.enc <lmsy7.pfb
 rm-lmbx10 LMRoman10-Bold " enclmrm ReEncodeFont " <lm-rm.enc <lmbx10.pfb
@@ -150,6 +159,7 @@ ntx-Regular-tlf-t1 TeXGyreTermesX-Regular " encntx-ec-tlf ReEncodeFont " <[ntx-e
 txsys txsys <txsys.pfb
 ztmbsl-tlf-t1 TeXGyreTermesX-Bold " .167 SlantFont encntx-ec-tlf ReEncodeFont " <ntx-ec-tlf.enc <ztmb.pfb
 fplmr PazoMath <fplmr.pfb
+rrsfso10 rsfs10 " -.4 SlantFont " <rsfs10.pfb
 mathkerncmssi10 CMSSI10 <cmssi10.pfb
 ucrr8r NimbusMonL-Regu " TeXBase1Encoding ReEncodeFont " <8r.enc <ucrr8a.pfb
 uhvb8r NimbusSanL-Bold " TeXBase1Encoding ReEncodeFont " <8r.enc <uhvb8a.pfb
@@ -164,3 +174,4 @@ utmbo8r NimbusRomNo9L-Medi " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.
 utmr8r NimbusRomNo9L-Regu " TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
 utmri8r NimbusRomNo9L-ReguItal " TeXBase1Encoding ReEncodeFont " <8r.enc <utmri8a.pfb
 utmro8r NimbusRomNo9L-Regu " .167 SlantFont TeXBase1Encoding ReEncodeFont " <8r.enc <utmr8a.pfb
+uzdr Dingbats <uzdr.pfb

@@ -95,13 +95,15 @@ So this project hosts TeX Live itself, as static files:
 
 **`scripts/build-texlive-cache.mjs`** does the work, in three phases:
 
-1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 23 realistic documents plus a smoke test per supported package, recording every file the engine asks for.
+1. **Discovery.** Index a local TeX Live installation, serve it over the engine's native protocol, and drive the real WASM engine in headless Chromium — first `compileformat` to produce `pdflatex.fmt` from *this* engine build, then a corpus of 26 realistic documents plus a smoke test per supported package, recording every file the engine asks for.
 2. **Write.** Copy the recorded files to `public/texlive/files/`, trim the 5.1 MB font map down to the 177 entries whose fonts actually shipped, and write the manifest the browser shim resolves against.
 3. **Verify.** Recompile the entire corpus against nothing but the generated store, through the same shim the deployed site uses.
 
 The engine decides what ships, not a hand-written package list. Phase 3 is the point: a store is only useful if it is provably sufficient on its own.
 
-Coverage comes from two sources. The curated corpus proves realistic *documents* work end to end, and `SMOKE_PACKAGES` gives every supported package a minimal document of its own — one package per document, so a package that cannot run in a browser engine fails alone instead of taking a batch down with it. A curated document failing is a build error; a smoke package failing is a warning, and that package is simply left off the supported list. `manifest.json` carries the list of packages that actually compiled, so what the store claims cannot drift from what it has.
+Coverage comes from three sources. The curated corpus proves realistic *documents* work end to end, and `SMOKE_PACKAGES` gives every supported package a minimal document of its own — one package per document, so a package that cannot run in a browser engine fails alone instead of taking a batch down with it. A curated document failing is a build error; a smoke package failing is a warning, and that package is simply left off the supported list. `manifest.json` carries the list of packages that actually compiled, so what the store claims cannot drift from what it has.
+
+The third source is `ALWAYS_INCLUDE_PATTERNS`, which ships whole font families regardless of what the corpus reached. Discovery cannot cover fonts the way it covers packages: TeX picks a design size from context, so `\texttt` inside a 12pt title wants cmtt12 while a footnote wants cmtt8, and a metric the store never fetched is not a degraded render — it is `Metric (TFM) file not found` and no PDF at all. Guessing which sizes a document will reach is a losing game, so Computer Modern, Latin Modern, and the EC/TC metrics ship complete, along with the cm-super outlines they re-encode. Metrics are nearly free; the outlines cost more, but a metric without its outline only moves the fatal error from load time to output time, so they travel together.
 
 ```bash
 # Needs a local TeX Live and a Chromium. Output is committed, so a normal
@@ -114,7 +116,7 @@ npm run texlive:build
 
 `cm-super` is not optional. It supplies Type 1 versions of the EC fonts, which is what `\usepackage[T1]{fontenc}` selects for any family a document does not override. Without it those fonts exist only as METAFONT sources, the engine asks for bitmaps, and a perfectly ordinary CV fails with `Font ectt1095 at 600 not found`.
 
-Current store: **762 files, 40.4 MB on disk**, 15.2 MB once a host gzips it. A visitor only downloads the files their own document needs, so the store growing does not make anyone's page load slower.
+Current store: **2,146 files, 69.5 MB on disk**, 40.0 MB once a host gzips it. A visitor only downloads the files their own document needs, so the store growing does not make anyone's page load slower.
 
 ### How lookups are resolved without a server
 
@@ -191,7 +193,7 @@ Shipped (P0 and P1): split pane with persisted ratio, CodeMirror 6 with LaTeX hi
 
 Not shipped: KaTeX draft tier, image upload, multi-file projects, share-by-URL. Collaboration, accounts, SyncTeX and Biber remain out of scope.
 
-Fonts and packages covered by the store: the LaTeX base classes plus `beamer`, the AMS maths stack, TikZ, the PSNFSS families (Charter, Times/`mathptmx`, Palatino/`mathpazo`, Helvetica, Courier), `newtx`, Libertine, XCharter, Latin Modern, and the EC Type 1 fonts for `T1` encoding.
+Fonts covered by the store: Computer Modern and Latin Modern complete, at every design size and in every shape, plus the EC/TC metrics for `T1` and `TS1` and the cm-super outlines behind them. On top of those, the PSNFSS families (Charter, Times/`mathptmx`, Palatino/`mathpazo`, Helvetica, Courier), `newtx`, Libertine and XCharter. Packages: the LaTeX base classes plus `beamer`, the AMS maths stack, and TikZ.
 
 On top of those, 48 packages each have their own smoke test — tables (`colortbl`, `multirow`, `makecell`, `hhline`, `threeparttable`, `adjustbox`, `rotating`), boxes (`tcolorbox`, `mdframed`, `framed`), maths notation (`cancel`, `bm`, `mathrsfs`, `stmaryrd`, `dsfont`, `physics`, `xfrac`, `amscd`, `empheq`), proofs and algorithms (`bussproofs`, `algorithm2e`, `thmtools`), text and layout (`ulem`, `pifont`, `paralist`, `enumerate`, `cleveref`, `titling`, `todonotes`, `lipsum`), and drawing (`pgfplots`, `forest`, `circuitikz`, `mhchem`, `chemfig`). The authoritative list is the `packages` field of [`public/texlive/manifest.json`](public/texlive/manifest.json), generated from what compiled.
 

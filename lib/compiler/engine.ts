@@ -93,7 +93,11 @@ export class TexEngine {
       // everywhere it matters.
       const [engine, manifest] = await Promise.all([
         fetch(ENGINE_DIR + "engine.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch(TEXLIVE_DIR + "manifest.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        // Revalidated for the same reason the shim revalidates it: the manifest
+        // is the one file in the store that changes between builds.
+        fetch(TEXLIVE_DIR + "manifest.json", { cache: "no-cache" })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
 
       const assets: { url: string; bytes: number }[] = [

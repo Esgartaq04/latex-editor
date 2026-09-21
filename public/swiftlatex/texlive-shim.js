@@ -52,6 +52,21 @@
     try {
       var x = new Native();
       x.open("GET", base + "manifest.json", false);
+      /*
+       * Always revalidate.
+       *
+       * Every other file in the store is immutable — a name maps to one body
+       * forever — but the manifest changes whenever the store is rebuilt, and
+       * it is the thing that decides whether a lookup reaches the network at
+       * all. A stale copy makes the shim answer "no such file" locally for
+       * files the server is serving perfectly well, which surfaces as a
+       * document that fails here and works in a private window.
+       *
+       * The cost is one conditional request per worker start, normally a 304
+       * with no body. Correctness is worth more than that.
+       */
+      x.setRequestHeader("Cache-Control", "no-cache");
+      x.setRequestHeader("Pragma", "no-cache");
       x.send(null);
       if (x.status === 200) {
         var data = JSON.parse(x.responseText);

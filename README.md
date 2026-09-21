@@ -126,6 +126,7 @@ kpathsea asks for `cmr10` and encodes "this is a TFM" in a numeric format code �
 - The `fileid` response header the engine requires — which no static host can set per-file — is synthesised.
 - Extensions are restored from the manifest, using both the exact rewrites recorded during the build and the extension each format code turned out to mean.
 - **A miss is answered locally with a synthetic 301 and never touches the network.** This is the one that matters for speed: kpathsea probes far more names than it finds, and every probe is a *synchronous* blocking request.
+- **The manifest is always revalidated**, unlike every other file in the store. The rest are immutable — a name maps to one body forever — but the manifest changes with every rebuild, and it is what decides whether a lookup reaches the network at all. A cached copy therefore hides files the server is serving perfectly well, and the symptom is a document that fails in a normal window and works in a private one. One conditional request per worker start is cheap next to that.
 
 Everything that is not a TeX Live lookup passes straight through to the native implementation.
 

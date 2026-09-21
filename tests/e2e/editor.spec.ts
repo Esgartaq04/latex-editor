@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 /**
  * The compilation pipeline can only be tested in a browser — it is WebAssembly
@@ -149,6 +151,72 @@ test("names the package when one is genuinely missing", async ({ page }) => {
   await expect(panel).toContainText("not in this editor's TeX Live bundle");
   // Line 2 is the \usepackage, not line 3 where TeX actually stopped.
   await expect(panel.getByRole("button", { name: /line 2/ })).toBeVisible();
+});
+
+test("picks up a rebuilt manifest instead of trusting the cached copy", async ({ page }) => {
+  // The manifest decides whether a lookup reaches the network at all: a name it
+  // does not list is answered in the browser with a synthetic 301, so the
+  // server is never asked. That makes a cached manifest able to hide files the
+  // server is serving perfectly well — the symptom is a document that fails in
+  // a normal window and works in a private one.
+  //
+  // Reproduced the way it actually happens: load once against a manifest that
+  // predates a store rebuild, then rebuild the store underneath and reload.
+  // The server sends the manifest with a real max-age and no validators, so
+  // without an explicit revalidation the second load reuses the stale copy.
+  const manifestPath = path.join(process.cwd(), "out", "texlive", "manifest.json");
+  const original = await readFile(manifestPath, "utf8");
+  const manifest = JSON.parse(original);
+
+  // A document whose only unusual need is a 12pt typewriter metric.
+  const source = [
+    "\\documentclass[11pt]{article}",
+    "\\author{NetID: \\texttt{someone}}",
+    "\\title{A Title}",
+    "\\begin{document}",
+    "\\maketitle",
+    "\\end{document}",
+  ].join("\n");
+
+  const stale = {
+    ...manifest,
+    files: manifest.files.filter((name: string) => name !== "cmtt12.tfm"),
+    aliases: Object.fromEntries(
+      Object.entries(manifest.aliases).filter(([, value]) => value !== "cmtt12.tfm"),
+    ),
+  };
+
+  try {
+    await writeFile(manifestPath, JSON.stringify(stale));
+
+    await page.goto(HOME);
+    await waitForRender(page);
+    await page.locator(".cm-content").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type(source);
+    await page.getByTestId("compile").click();
+
+    // Sanity check that the stale manifest really does break this document —
+    // otherwise the second half of the test proves nothing.
+    await expect(page.getByTestId("error-panel")).toContainText("cmtt12", { timeout: 90_000 });
+
+    // The store is rebuilt; the file the manifest was hiding is now listed.
+    await writeFile(manifestPath, original);
+
+    // A fresh navigation, not page.reload(): Chromium revalidates subresources
+    // on an explicit reload, which would mask exactly the bug under test.
+    await page.goto("about:blank");
+    await page.goto(HOME);
+    await waitForRender(page);
+    await page.locator(".cm-content").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type(source);
+    await page.getByTestId("compile").click();
+
+    await expect(page.getByTestId("status")).toContainText("Compiled", { timeout: 90_000 });
+  } finally {
+    await writeFile(manifestPath, original);
+  }
 });
 
 test("restores the document from IndexedDB after a reload", async ({ page }) => {

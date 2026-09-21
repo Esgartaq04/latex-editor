@@ -35,6 +35,22 @@ const MIME = {
 
 const IMMUTABLE = /^\/(swiftlatex|pdfjs|texlive\/files|_next\/static)\//;
 
+/**
+ * The manifest is served with a real max-age, the way GitHub Pages serves
+ * everything. Without this the local server revalidates every request and a
+ * stale-manifest bug is invisible until it reaches production — which is
+ * exactly how one escaped: the shim reads the manifest to decide whether a
+ * lookup reaches the network, so a cached copy makes newly added files
+ * unreachable and the symptom is "works in a private window".
+ */
+const MANIFEST = "/texlive/manifest.json";
+
+function cacheControl(pathname) {
+  if (IMMUTABLE.test(pathname)) return "public, max-age=31536000, immutable";
+  if (pathname === MANIFEST) return "public, max-age=600";
+  return "public, max-age=0, must-revalidate";
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   let pathname = decodeURIComponent(url.pathname);
@@ -63,9 +79,7 @@ const server = createServer(async (req, res) => {
     const body = await readFile(file);
     res.writeHead(200, {
       "content-type": MIME[path.extname(file)] ?? "application/octet-stream",
-      "cache-control": IMMUTABLE.test(pathname)
-        ? "public, max-age=31536000, immutable"
-        : "public, max-age=0, must-revalidate",
+      "cache-control": cacheControl(pathname),
     });
     res.end(body);
   } catch {

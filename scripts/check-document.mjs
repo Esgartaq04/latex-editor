@@ -71,7 +71,11 @@ try {
 
   const actionable = [...missing].filter((name) => {
     if (index.has(name)) return true;
-    return [".sty", ".cls", ".def", ".cfg", ".fd"].some((ext) => index.has(name + ext));
+    // kpathsea strips the extension, so a bare `cmtt12` is a font metric and
+    // `charter` is a package. Probe the same extensions the store resolves.
+    return [".sty", ".cls", ".def", ".cfg", ".fd", ".tfm", ".vf", ".pfb", ".enc", ".map"].some(
+      (extension) => index.has(name + extension),
+    );
   });
 
   if (actionable.length) {

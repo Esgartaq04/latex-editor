@@ -344,6 +344,43 @@ A measurement of \SI{3.5}{\kilo\gram} and \enquote{a quotation}.
 \end{multicols}
 \end{document}
 `,
+  // TeX picks a font's design size from context, so a document reaching a size
+  // the store never fetched dies with "Metric (TFM) file not found" and no PDF.
+  // These three guard the whole range rather than the sizes a corpus happens to
+  // wander into.
+  "font-size-range": String.raw`\documentclass[11pt]{article}
+\begin{document}
+{\tiny \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\scriptsize \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\footnotesize \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\small \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\normalsize \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\large \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\Large \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\LARGE \texttt{tt} \textbf{b} \textit{i} \textsl{s} \textsc{sc} \textsf{sf}}
+{\huge \texttt{tt} \textbf{b} \textit{i}}
+{\Huge \texttt{tt} \textbf{b} \textit{i}}
+$x^{2^{2}}$ $\scriptstyle a$ $\scriptscriptstyle b$
+\end{document}
+`,
+  // TS1 text symbols. The kernel reaches for these even with no fontenc and no
+  // textcomp, which is how an ordinary OT1 document ends up needing cm-super.
+  "ts1-symbols": String.raw`\documentclass[11pt]{article}
+\begin{document}
+\textcopyright\ \textregistered\ \texttrademark\ \textdegree\ \texteuro\
+\textbullet\ \textperthousand\ \textsection\ \textparagraph\ \textdagger
+{\large \textcopyright} {\small \textdegree} \textbf{\textcopyright}
+\end{document}
+`,
+  // T1 without lmodern — the EC path, which resolves through cm-super.
+  "t1-without-lmodern": String.raw`\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\begin{document}
+Text with \textbf{bold}, \textit{italic}, \texttt{mono}, \textsc{caps}.
+{\large \texttt{larger mono}} {\small \textsf{smaller sans}}
+Accented: \"a \'e \^i \~n \c{c}
+\end{document}
+`,
   "hyperref+geometry": String.raw`\documentclass{article}
 \usepackage[a4paper,margin=2cm]{geometry}
 \usepackage[colorlinks=true]{hyperref}
@@ -603,12 +640,64 @@ async function discover(corpus) {
   return { server, overlay, failures };
 }
 
+/**
+ * Font files shipped whether or not the corpus happened to ask for them.
+ *
+ * A corpus can only discover the font *sizes* it uses. TeX picks a design size
+ * from the context — `\texttt` inside a 12pt title wants cmtt12, a footnote
+ * wants cmtt8 — and a metric that is not in the store is not a degraded render,
+ * it is `Metric (TFM) file not found` and no PDF at all. Guessing which sizes a
+ * document will reach is a losing game, so the core families ship whole.
+ *
+ * Metrics are nearly free (Computer Modern's 75 are 0.1 MB). The Type 1
+ * outlines cost more, but a metric without its outline just moves the fatal
+ * error from load time to output time, so they travel together.
+ *
+ * The store grows; a visitor's download does not. Nobody fetches a font their
+ * own document never selects.
+ */
+const ALWAYS_INCLUDE_PATTERNS = [
+  // Computer Modern — what a document gets with no font package at all.
+  /\/fonts\/tfm\/public\/cm\/[^/]+\.tfm$/,
+  /\/fonts\/type1\/public\/amsfonts\/cm\/[^/]+\.pfb$/,
+  // Latin Modern — the usual answer for T1 encoding.
+  /\/fonts\/tfm\/public\/lm\/[^/]+\.tfm$/,
+  /\/fonts\/type1\/public\/lm\/[^/]+\.pfb$/,
+  /\/fonts\/vf\/public\/lm\/[^/]+\.vf$/,
+  // EC metrics for T1 without lmodern, and TC metrics for the TS1 text
+  // symbols — which modern LaTeX reaches for even in an OT1 document.
+  /\/fonts\/tfm\/jknappen\/(ec|tc)\/[^/]+\.tfm$/,
+  // The outlines both of those re-encode. cm-super is 58 MB in full, so this
+  // takes the twelve families the standard classes select, at the ten design
+  // sizes LaTeX's size commands actually ask for. Metrics without outlines
+  // would only move the fatal error from load time to output time, so these
+  // have to travel with the metrics above.
+  /\/fonts\/type1\/public\/cm-super\/(sfrm|sfbx|sfti|sfsl|sfsc|sftt|sfss|sfsi|sfsx|sfbi|sfcc|sftc)(0500|0600|0700|0800|0900|1000|1095|1200|1440|1728)\.pfb$/,
+  // ...and the encodings those map entries reference, or the font map trim
+  // drops every cm-super line as unsatisfiable.
+  /\/fonts\/enc\/dvips\/cm-super\/[^/]+\.enc$/,
+];
+
+/** Basenames in the index whose path matches an always-include pattern. */
+function alwaysIncluded(index) {
+  const names = [];
+  for (const [name, filePath] of index) {
+    if (ALWAYS_INCLUDE_PATTERNS.some((pattern) => pattern.test(filePath))) names.push(name);
+  }
+  return names;
+}
+
 async function writeStore(server, overlay, supportedPackages = []) {
   await rm(FILES_DIR, { recursive: true, force: true });
   await mkdir(FILES_DIR, { recursive: true });
 
-  const names = [...server.used].sort();
+  const forced = alwaysIncluded(server.index);
+  const names = [...new Set([...server.used, ...forced])].sort();
   const available = new Set(names);
+  console.log(
+    `\nShipping ${forced.length} font files from the core families regardless of ` +
+      `what the corpus reached (${names.length - server.used.size} of them new).`,
+  );
 
   /**
    * Files are written uncompressed and left for the host to compress.
